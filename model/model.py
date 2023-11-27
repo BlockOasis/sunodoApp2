@@ -37,10 +37,13 @@ class DataChunks(BaseModel):
 class Claim(BaseModel):
     user_address: str
     disputing_user_address: Optional[str]
-    value: int
-    last_edited: int
+    timestamp_of_claim: str
     status: Status
-    data_chunks: Optional[DataChunks]
+    collateral: int
+    compProof: str
+    compCID: str
+    prepCID: str
+    lastUpdated: int
 
 class SimplifiedClaim(BaseModel):
     id: str

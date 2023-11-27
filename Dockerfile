@@ -2,7 +2,7 @@
 FROM --platform=linux/riscv64 cartesi/python:3.10-slim-jammy
 
 LABEL io.sunodo.sdk_version=0.2.0
-LABEL io.cartesi.rollups.ram_size=1Gi
+LABEL io.cartesi.rollups.ram_size=4Gi
 LABEL io.cartesi.rollups.disk_size=5Gi
 
 ARG MACHINE_EMULATOR_TOOLS_VERSION=0.12.0
@@ -30,8 +30,6 @@ RUN <<EOF
 pip install -r requirements.txt --no-cache
 find /usr/local/lib -type d -name __pycache__ -exec rm -r {} +
 EOF
-
-RUN pip install pydantic
 
 COPY ./dapp.py .
 COPY ./cartesi cartesi

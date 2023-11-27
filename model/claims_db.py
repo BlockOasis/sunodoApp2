@@ -1,31 +1,55 @@
 # from pydantic import BaseModel, Field
 from typing import Dict, List, Optional
-# from enum import Enum
 
-from .model import Claim, Status, DataChunks
+# from enum import Enum
+import time
+
+from .model import Claim, Status
+
 
 class ClaimsDatabase:
     def __init__(self):
         self.claims: Dict[int, Claim] = {}
-        self.latest_id: int = 0
+        self.next_claim_id: int = 1  # Start with 1, increment for each new claim
 
-    def create_claim(self, user_address: str, value: int, data_chunks: Optional[DataChunks] = None) -> Claim:
+    def create_claim(
+        self,
+        prep_CID: str,
+        user_address: str,
+        timestamp_of_claim: str,
+        comp_proof: str,
+        comp_CID: str,
+        value: int,
+    ) -> Claim:
         """
         Creates a new claim and adds it to the database.
         """
-        self.latest_id += 1
+        claim_id = self.next_claim_id
+        self.next_claim_id += 1
+
         new_claim = Claim(
             user_address=user_address,
             disputing_user_address=None,
-            value=value,
-            last_edited=... , # Insert the current timestamp here
+            timestamp_of_claim=timestamp_of_claim,
             status=Status.OPEN,
-            data_chunks=data_chunks
+            collateral=value,
+            compProof=comp_proof,
+            compCID=comp_CID,
+            prepCID=prep_CID,
+            lastUpdated=int(time.time()),
         )
-        self.claims[self.latest_id] = new_claim
+        self.claims[claim_id] = new_claim  # Using numerical ID
         return new_claim
 
-    def initiate_dispute(self, claim_id: int, disputing_user_address: str, reason: str) -> Optional[Claim]:
+    def get_next_claim_id(self) -> int:
+        """
+        Returns the ID that will be assigned to the next created claim.
+        """
+        return self.next_claim_id
+
+    def initiate_dispute(
+        self, claim_id: int, disputing_user_address: str, reason: str
+    ) -> Optional[Claim]:
         """
         Initiates a dispute on a specific claim.
         """
@@ -33,7 +57,7 @@ class ClaimsDatabase:
         if claim:
             claim.disputing_user_address = disputing_user_address
             claim.status = Status.DISPUTING
-            claim.last_edited = ... # Insert the current timestamp here
+            claim.last_edited = ...  # Insert the current timestamp here
             # You might also want to add the dispute reason to the claim
             return claim
         return None
@@ -45,7 +69,7 @@ class ClaimsDatabase:
         claim = self.claims.get(claim_id)
         if claim:
             claim.status = final_status
-            claim.last_edited = ... # Insert the current timestamp here
+            claim.last_edited = ...  # Insert the current timestamp here
             return claim
         return None
 
@@ -62,3 +86,5 @@ class ClaimsDatabase:
         return list(self.claims.values())
 
     # Additional methods can be added as needed for your application
+
+claims_db = ClaimsDatabase()
