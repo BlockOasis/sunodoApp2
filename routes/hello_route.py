@@ -1,8 +1,7 @@
 from helpers.utils import str2hex, to_jsonhex
 from cartesi import Rollup, RollupData
 
-
-def register_hello_routes(url_router, json_router):
+def register_hello(url_router, json_router):
     @url_router.advance("hello/")
     def hello_world_advance(rollup: Rollup, data: RollupData) -> bool:
         rollup.notice(str2hex("Hello World"))
@@ -10,7 +9,7 @@ def register_hello_routes(url_router, json_router):
 
     @url_router.inspect("hello/")
     def hello_world_inspect(rollup: Rollup, data: RollupData) -> bool:
-        rollup.report(str2hex("Hello World"))
+        rollup.report(str2hex("Hello World-Jhingalalahuhu"))
         return True
     
     @json_router.advance({"hello": "world"})
@@ -18,5 +17,3 @@ def register_hello_routes(url_router, json_router):
         data = data.json_payload()
         rollup.report(to_jsonhex({"action": data["action"]}))
         return True
-
-    # Other hello-related routes...

@@ -1,5 +1,4 @@
 import logging
-from cartesi import Rollup, RollupData
 
 from helpers.utils import (
     str2hex,
@@ -7,13 +6,20 @@ from helpers.utils import (
     create_erc20_transfer_voucher,
     decode_erc20_deposit,
 )
+from cartesi import Rollup, RollupData
+
+from model.bank import bank
+
+from model.user_db import users_db
+
+from helpers.setting import settings
 
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
 
 
-def register_deposit_routes(dapp, users_db, bank, settings):
-    def process_deposit_and_add_user(rollup, data):
+def register_deposit(dapp):
+    def process_deposit_and_add_user(rollup: Rollup, data):
         LOGGER.info("Processing Deposit")
         binary = hex2bin(data.payload)
 

@@ -1,6 +1,4 @@
-from pydantic import BaseModel, Field
-from typing import Dict, Optional
-from enum import Enum
+from pydantic import BaseModel
 import logging
 
 LOGGER = logging.getLogger(__name__)
@@ -51,3 +49,4 @@ class Bank:
     def balance(self, address: str) -> int:
         wallet = self._get_wallet(address)
         return wallet.balance
+bank = Bank()
