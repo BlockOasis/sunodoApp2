@@ -1,7 +1,6 @@
 # from pydantic import BaseModel, Field
 from typing import Dict, List, Optional
 
-# from enum import Enum
 import time
 
 from .model import Claim, Status
@@ -48,7 +47,7 @@ class ClaimsDatabase:
         return self.next_claim_id
 
     def initiate_dispute(
-        self, claim_id: int, disputing_user_address: str, reason: str
+        self, claim_id: int, disputing_user_address: str
     ) -> Optional[Claim]:
         """
         Initiates a dispute on a specific claim.
@@ -57,8 +56,7 @@ class ClaimsDatabase:
         if claim:
             claim.disputing_user_address = disputing_user_address
             claim.status = Status.DISPUTING
-            claim.last_edited = ...  # Insert the current timestamp here
-            # You might also want to add the dispute reason to the claim
+            claim.lastUpdated = int(time.time())
             return claim
         return None
 
@@ -69,7 +67,7 @@ class ClaimsDatabase:
         claim = self.claims.get(claim_id)
         if claim:
             claim.status = final_status
-            claim.last_edited = ...  # Insert the current timestamp here
+            claim.lastUpdated = int(time.time())
             return claim
         return None
 
@@ -79,6 +77,15 @@ class ClaimsDatabase:
         """
         return self.claims.get(claim_id)
 
+    def get_claim_by_prep_CID(self, prep_CID: str) -> Optional[Claim]:
+        """
+        Retrieves a claim by its prep_CID.
+        """
+        for claim in self.claims.values():
+            if claim.prepCID == prep_CID:
+                return claim
+        return None
+
     def get_all_claims(self) -> List[Claim]:
         """
         Retrieves all claims in the database.
@@ -86,5 +93,6 @@ class ClaimsDatabase:
         return list(self.claims.values())
 
     # Additional methods can be added as needed for your application
+
 
 claims_db = ClaimsDatabase()

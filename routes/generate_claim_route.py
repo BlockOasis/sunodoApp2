@@ -3,7 +3,7 @@ import logging
 from helpers.utils import to_jsonhex
 from cartesi import Rollup, RollupData
 
-from model.bank import bank
+from model.bank import bank_db
 
 from model.user_db import users_db
 from model.claims_db import claims_db
@@ -54,17 +54,17 @@ def generate_claim(json_router):
         return True, ""
 
     def check_existing_claim(prep_CID: str):
-        if claims_db.get_claim(prep_CID):
+        if claims_db.get_claim_by_prep_CID(prep_CID):
             return False, "Claim already exists"
         return True, ""
 
     def check_and_lock_funds(user_wallet_address: str):
-        if bank.balance(user_wallet_address) < settings.COLLATERAL_AMOUNT:
-            message = f"Insufficient funds for collateral in user's wallet. Current Balance: {bank.balance(user_wallet_address)}"
+        if bank_db.balance(user_wallet_address) < settings.COLLATERAL_AMOUNT:
+            message = f"Insufficient funds for collateral in user's wallet. Current Balance: {bank_db.balance(user_wallet_address)}"
             return False, message
 
         try:
-            bank.transfer(
+            bank_db.transfer(
                 user_wallet_address,
                 settings.LOCKED_ASSET_ADDRESS,
                 settings.COLLATERAL_AMOUNT,

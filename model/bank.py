@@ -12,7 +12,7 @@ class Wallet(BaseModel):
     # TODO: store pub keys
 
 
-class Bank:
+class BankDatabase:
     def __init__(self):
         self.wallets: dict[str, Wallet] = {}
 
@@ -49,4 +49,4 @@ class Bank:
     def balance(self, address: str) -> int:
         wallet = self._get_wallet(address)
         return wallet.balance
-bank = Bank()
+bank_db = BankDatabase()

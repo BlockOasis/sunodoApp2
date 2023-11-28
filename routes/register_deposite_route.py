@@ -8,7 +8,7 @@ from helpers.utils import (
 )
 from cartesi import Rollup, RollupData
 
-from model.bank import bank
+from model.bank import bank_db
 
 from model.user_db import users_db
 
@@ -41,7 +41,7 @@ def register_deposit(dapp):
 
         try:
             LOGGER.info("Handling wallet deposit")
-            bank.deposit(depositor, amount)
+            bank_db.deposit(depositor, amount)
         except Exception as e:
             msg = f"Could not deposit {amount} for user {depositor}. Error: {e}"
             LOGGER.error(msg)
@@ -49,11 +49,11 @@ def register_deposit(dapp):
             return False
 
         LOGGER.info(
-            f'Sending notice for deposited amount: {{"action":"deposit","address":"{depositor}","balance":"{bank.balance(depositor)}"}}'
+            f'Sending notice for deposited amount: {{"action":"deposit","address":"{depositor}","balance":"{bank_db.balance(depositor)}"}}'
         )
         rollup.notice(
             str2hex(
-                f'{{"action":"deposit","address":"{depositor}","balance":"{bank.balance(depositor)}"}}'
+                f'{{"action":"deposit","address":"{depositor}","balance":"{bank_db.balance(depositor)}"}}'
             )
         )
 
