@@ -3,49 +3,49 @@ import logging
 from helpers.utils import to_jsonhex
 from cartesi import Rollup, RollupData
 
-from model.bank import bank_db
+from model.bank_db import bank_db
 
 from model.user_db import users_db
 from model.claims_db import claims_db
 
 from helpers.setting import settings
+from helpers.inputs import ClaimInput
 
 
 LOGGER = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 
 def generate_claim(json_router):
-    def decode_payload(decoded_data, data: RollupData):
-        """
-        Decodes the JSON payload from the data and extracts necessary fields.
+    # def decode_payload(decoded_data, data: RollupData):
+    #     """
+    #     Decodes the JSON payload from the data and extracts necessary fields.
 
-        Args:
-            data (RollupData): The data object containing the JSON payload.
+    #     Args:
+    #         data (RollupData): The data object containing the JSON payload.
 
-        Returns:
-            dict: A dictionary containing extracted fields from the payload.
-        """
-        LOGGER.info
-        prep_CID = decoded_data.get("cidPrep")
-        comp_CID = decoded_data.get("cidComp")
-        collateral = decoded_data.get("coll")
-        comp_proof = decoded_data.get("compProof")
-        user_wallet_address = data.metadata.msg_sender
-        timestamp = data.metadata.timestamp
+    #     Returns:
+    #         dict: A dictionary containing extracted fields from the payload.
+    #     """
+    #     prep_CID = decoded_data.get("cidPrep")
+    #     comp_CID = decoded_data.get("cidComp")
+    #     collateral = decoded_data.get("coll")
+    #     comp_proof = decoded_data.get("compProof")
+    #     user_wallet_address = data.metadata.msg_sender
+    #     timestamp = data.metadata.timestamp
 
-        """ Example:
-        {"handle": "claim","cidPrep": "QmdsL7GxAPRbYh9U7mG6ctnjhbChC7Yws4oriSxUafQ41R","cidComp": "QmdsL7GxAPRbYh9U7mG6ctnjhbChC7Yws4oriSxUafQ41R","coll": "1000000000000000000","compProof": "QmdsL7GxAPRbYh9U7mG6ctnjhbChC7Yws4oriSxUa"}
-        """
+    #     """ Example:
+    #     {"handle": "claim","cidPrep": "QmdsL7GxAPRbYh9U7mG6ctnjhbChC7Yws4oriSxUafQ41R","cidComp": "QmdsL7GxAPRbYh9U7mG6ctnjhbChC7Yws4oriSxUafQ41R","coll": "1000000000000000000","compProof": "QmdsL7GxAPRbYh9U7mG6ctnjhbChC7Yws4oriSxUa"}
+    #     """
 
-        return {
-            "prep_CID": prep_CID,
-            "comp_CID": comp_CID,
-            "collateral": collateral,
-            "comp_proof": comp_proof,
-            "user_wallet_address": user_wallet_address,
-            "timestamp": timestamp,
-        }
+    #     return {
+    #         "prep_CID": prep_CID,
+    #         "comp_CID": comp_CID,
+    #         "collateral": collateral,
+    #         "comp_proof": comp_proof,
+    #         "user_wallet_address": user_wallet_address,
+    #         "timestamp": timestamp,
+    #     }
 
     def validate_collateral(collateral: int):
         if collateral is None or collateral != settings.COLLATERAL_AMOUNT:
@@ -100,34 +100,25 @@ def generate_claim(json_router):
 
     @json_router.advance({"handle": "claim"})
     def handle_claim(rollup: Rollup, data: RollupData):
-        LOGGER.debug(f"Handling Claim: {data}")
-        decoded_data = data.json_payload()
-        decoded = decode_payload(decoded_data, data)
-        prep_CID, comp_CID, collateral, comp_proof, user_wallet_address, timestamp = (
-            decoded["prep_CID"],
-            decoded["comp_CID"],
-            int(decoded["collateral"]),
-            decoded["comp_proof"],
-            decoded["user_wallet_address"],
-            decoded["timestamp"],
-        )
+        LOGGER.info(f"Handling Claim: {data}")
+        payload = ClaimInput.parse_obj(data.json_payload())        
 
         # 1. Validate Collateral
-        valid, message = validate_collateral(collateral)
+        valid, message = validate_collateral(payload.collateral)
         if not valid:
             rollup.report(to_jsonhex({"error": message}))
             return False
-        LOGGER.info("Collateral Validated")
+        LOGGER.info("✅ Collateral Validated")
 
         # 2. Check Existing Claim
-        valid, message = check_existing_claim(prep_CID)
+        valid, message = check_existing_claim(payload.CID_prep)
         if not valid:
             rollup.report(to_jsonhex({"error": message}))
             return False
-        LOGGER.info("Checked Existing Claims")
+        LOGGER.info("✅ Checked Existing Claims")
 
         # 3. Check and Lock Funds
-        valid, message = check_and_lock_funds(user_wallet_address)
+        valid, message = check_and_lock_funds(data.metadata.msg_sender)
         if not valid:
             rollup.report(to_jsonhex({"error": message}))
             return False
@@ -135,17 +126,17 @@ def generate_claim(json_router):
 
         # 4. Create and Register Claim
         new_claim_id, new_claim = create_and_register_claim(
-            prep_CID,
-            user_wallet_address,
-            timestamp,
-            comp_proof,
-            comp_CID,
-            int(collateral),
+            payload.prep_CID,
+            data.metadata.msg_sender,
+            data.metadata.timestamp,
+            payload.comp_proof,
+            payload.comp_CID,
+            int(payload.collateral),
         )
-        LOGGER.info("Claim created")
+        LOGGER.info("✅ Claim created")
 
         # 5. Update User Open Claims
-        update_user_open_claims(user_wallet_address, new_claim_id)
+        update_user_open_claims(data.metadata.msg_sender, new_claim_id)
         LOGGER.info("Updated user database with open claim")
 
         rollup.notice(to_jsonhex({"key": new_claim_id, "claim": new_claim.dict()}))

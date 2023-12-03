@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     CLAIM_EPOCH: int = 30
     DISPUTE_EPOCH: int = 60
     VALIDATOR_STAKING: int = 4 * 1000000000000000000
+    CLAIM_INCENTIVE: int = int(0.0005 * 1000000000000000000)
 
 
 settings = Settings()

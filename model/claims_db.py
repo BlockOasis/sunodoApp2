@@ -70,7 +70,15 @@ class ClaimsDatabase:
             claim.lastUpdated = int(time.time())
             return claim
         return None
-
+    
+    def validate_or_contradict_claim(self, claim_id: int, claim_status: Status) -> Optional[Claim]:
+        claim = self.claims.get(claim_id)
+        if claim:
+            claim.status = claim_status
+            claim.lastUpdated = int(time.time())
+            return claim
+        return None
+    
     def get_claim(self, claim_id: int) -> Optional[Claim]:
         """
         Retrieves a claim by its ID.

@@ -2,9 +2,11 @@ import logging
 from helpers.utils import to_jsonhex
 from cartesi import Rollup, RollupData
 
-from model.bank import bank_db
+from model.bank_db import bank_db
 from model.claims_db import claims_db, Status
 from helpers.setting import settings
+from helpers.inputs import DisputeInput
+from model.user_db import users_db
 
 # Configure logging
 LOGGER = logging.getLogger(__name__)
@@ -12,40 +14,40 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 def generate_dispute(json_router):
-    def decode_dispute_input(data: RollupData):
-        """
-        Decodes the JSON payload from the RollupData object to extract fields required for handling a dispute.
-        Fields extracted include the claim ID, staking amount, and preparation CID.
+    # def decode_dispute_input(data: RollupData):
+    #     """
+    #     Decodes the JSON payload from the RollupData object to extract fields required for handling a dispute.
+    #     Fields extracted include the claim ID, staking amount, and preparation CID.
 
-        Args:
-            data (RollupData): The RollupData object containing the JSON payload.
+    #     Args:
+    #         data (RollupData): The RollupData object containing the JSON payload.
 
-        Returns:
-            dict: A dictionary containing the extracted fields: claim_id, staking_amount, and prep_CID.
-        """
+    #     Returns:
+    #         dict: A dictionary containing the extracted fields: claim_id, staking_amount, and prep_CID.
+    #     """
         
-        # Extracting fields from payload
-        decoded_data = data.json_payload()
+    #     # Extracting fields from payload
+    #     decoded_data: dict = data.json_payload()
 
-        claim_id = decoded_data.get("claimID")
-        staking_amount = decoded_data.get("stakingAmount")
-        prep_CID = decoded_data.get("prep_CID")
+    #     claim_id = decoded_data.get("claimID")
+    #     staking_amount = decoded_data.get("stakingAmount")
+    #     prep_CID = decoded_data.get("prep_CID")
 
-        """
-        Example Payload:
-        {
-            "handle": "dispute",
-            "claimID": "12345",
-            "stakingAmount": "500000000000000000",
-            "prep_CID": "QmExampleCID"
-        }
-        """
+    #     """
+    #     Example Payload:
+    #     {
+    #         "handle": "dispute",
+    #         "claimID": "12345",
+    #         "stakingAmount": "400000000000000000",
+    #         "prep_CID": "QmExampleCID"
+    #     }
+    #     """
 
-        return {
-            "claim_id": claim_id,
-            "staking_amount": staking_amount,
-            "prep_CID": prep_CID,
-        }
+    #     return {
+    #         "claim_id": claim_id,
+    #         "staking_amount": staking_amount,
+    #         "prep_CID": prep_CID,
+    #     }
 
     def check_validator_stake(address: str, staking_amount: int):
         """
@@ -191,23 +193,24 @@ def generate_dispute(json_router):
         LOGGER.debug(f"Handling Dispute: {data}")
 
         # Decode Input
-        decoded = decode_dispute_input(data)
-        claim_id, staking_amount, prep_CID = (
-            decoded["claim_id"],
-            decoded["staking_amount"],
-            decoded["prep_CID"],
-        )
+        payload = DisputeInput.parse_obj(data.json_payload())
+        # decoded = decode_dispute_input(data)
+        # claim_id, staking_amount, prep_CID = (
+        #     decoded["claim_id"],
+        #     decoded["staking_amount"],
+        #     decoded["prep_CID"],
+        # )
 
         # Check Balance for Validator Stake
         disputing_party_address = data.metadata.msg_sender
-        valid, message = check_validator_stake(disputing_party_address, staking_amount)
+        valid, message = check_validator_stake(disputing_party_address, payload.staking_amount)
         if not valid:
             rollup.report(to_jsonhex({"error": message}))
             return False
         LOGGER.info("✅ Staking Amount Check")
 
         # Check if Claim Exists and Verify prep_CID
-        valid, message = check_claim_exists_and_verify_CID(claim_id, prep_CID)
+        valid, message = check_claim_exists_and_verify_CID(payload.claimID, payload.prep_CID)
         if not valid:
             rollup.report(to_jsonhex({"error": message}))
             return False
@@ -215,7 +218,7 @@ def generate_dispute(json_router):
 
         # Check Claim Eligibility for Dispute
         valid, message = check_claim_eligible_for_dispute(
-            claim_id, disputing_party_address
+            payload.claimID, disputing_party_address
         )
         if not valid:
             rollup.report(to_jsonhex({"error": message}))
@@ -223,21 +226,27 @@ def generate_dispute(json_router):
 
         # Transfer Balance to Lock Account
         valid, message = transfer_stake_to_locked_account(
-            disputing_party_address, staking_amount
+            disputing_party_address, payload.staking_amount
         )
         if not valid:
             rollup.report(to_jsonhex({"error": message}))
         LOGGER.info("✅ Amount Stake Check")
 
         # Initiate Dispute on Claim
-        updated_claim = claims_db.initiate_dispute(claim_id, disputing_party_address)
+        updated_claim = claims_db.initiate_dispute(payload.claimID, disputing_party_address)
         if updated_claim is None:
             rollup.report(to_jsonhex({"error": "Failed to initiate dispute on claim"}))
             return False
         LOGGER.info("✅ Update Claim Check")
+        
+        # Update user db of claimer
+        update_user = users_db.get_user(claims_db.get_claim(payload.claimID).user_address)
+        update_user.open_disputes[payload.claimID] = None
+        del update_user.open_claims[payload.claimID]
+        LOGGER.info("✅ Update User DB Check")
 
         rollup.report(
-            f"Dispute initiated on claim ID {claim_id} by user {disputing_party_address}\nTime Left to resolve dispute: {settings.DISPUTE_EPOCH}"
+            f"Dispute initiated on claim ID {payload.claimID} by user {disputing_party_address}\nTime Left to resolve dispute: {settings.DISPUTE_EPOCH}"
         )
 
         return True

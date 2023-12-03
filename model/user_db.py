@@ -46,6 +46,18 @@ class UsersDatabase:
         Retrieves all users in the database.
         """
         return self.users
+    
+    def won_claim(self, user_id, claimID) -> Optional[User]:
+        user = self.users.get(user_id)
+        user.total_claims += 1
+        user.correct_claims += 1
+        del user.open_claims[claimID]
+        return user
+    
+    def lost_claim(self, user_id, claimID) -> Optional[User]:
+        user = self.users.get(user_id)
+        user.total_claims += 1
+        del user.open_claims[claimID]
 
 
 users_db = UsersDatabase()

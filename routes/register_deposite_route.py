@@ -8,7 +8,7 @@ from helpers.utils import (
 )
 from cartesi import Rollup, RollupData
 
-from model.bank import bank_db
+from model.bank_db import bank_db
 
 from model.user_db import users_db
 
@@ -71,8 +71,3 @@ def register_deposit(dapp):
         LOGGER.warning(msg)
         rollup.report(str2hex(msg))
         return False
-
-    # # Register the default_handler with the dapp
-    # dapp.add_advance_handler(default_handler)
-
-    # You can add other deposit-related routes here if needed
